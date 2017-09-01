@@ -11,14 +11,13 @@
 |
 */
 
+//Application Home
 Route::get('/', function () {
     return view('welcome');
 });
 
 Auth::routes();
-
-Route::get('/dashboard', 'DashboardController@index')->name('index');
-
+Route::get('/dashboard', 'DashboardController@index');
 Route::resource('/dashboard/posts', 'PostController');
 Route::resource('/dashboard/users', 'UserController');
 Route::resource('/dashboard/roles', 'RoleController');
