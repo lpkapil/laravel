@@ -30,4 +30,30 @@ table > tbody > tr > td{
     word-break: break-all;
 }
 
+.dropzone{
+    border: 2px dashed #0087F7 !important;
+    border-radius: 5px;
+    background: white !important;
+}
 
+.dropzone .dz-message {
+    font-size: 15px;
+    font-weight: 400;
+}
+
+#app .dropdown-menu{
+    min-width: 144px !important;
+}
+
+.notfound, .welcomeapp{
+    font-size: 50px !important;
+    color:#777 !important;
+}
+
+.center{
+    text-align: center;
+}
+
+.padding150{
+    padding:150px 0px;
+}

@@ -5,6 +5,15 @@ namespace App;
 use Illuminate\Database\Eloquent\Model;
 
 class Role extends Model {
+    
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array
+     */
+    protected $fillable = [
+        'name', 'description', 'status'
+    ];
 
     /**
      * Add a single condition, or an array of conditions to the WHERE clause of the query.

@@ -8,7 +8,7 @@
     jQuery(document).ready(function (re) {
 
         jQuery('[data-toggle="tooltip"]').tooltip();
-        
+
         //Toaster Notification Library
         toastr.options = {
             "closeButton": true,
@@ -46,6 +46,15 @@
             ]
         });
 
+        window.adminrolelistingTable = jQuery('.adminrolelisting').DataTable({
+            "aoColumns": [
+                {"bSortable": true},
+                {"bSortable": true},
+                {"bSortable": true},
+                {"bSortable": false},
+            ]
+        });
+
         //Upload file media
         jQuery(document).on('click', '.browse', function () {
             var file = $(this).parent().parent().parent().find('.file');
@@ -53,6 +62,29 @@
         });
         jQuery(document).on('change', '.file', function () {
             $(this).parent().find('.form-control').val($(this).val().replace(/C:\\fakepath\\/i, ''));
+        });
+        
+        //Delete Media
+        jQuery('.delete_media').click(function (e) {
+            e.preventDefault();
+            var deleteId = jQuery(this).attr('data-id');
+            if (deleteId) {
+                jQuery.ajax({
+                    url: '/dashboard/media/' + deleteId,
+                    type: 'POST',
+                    data: {_method: 'DELETE', _token: jQuery('meta[name="csrf-token"]').attr('content'), id: deleteId},
+                    dataType: 'json',
+                    success: function (r) {
+                        toastr.info(r.message);
+                        setTimeout(function () {
+                            window.location.reload();
+                        }, 500);
+                    },
+                    error: function (jqXHR, textMessage) {
+                        console.log(textMessage);
+                    }
+                });
+            }
         });
 
         //Delete a Task
@@ -128,6 +160,7 @@
                 });
             }
         });
+        
     });
 }(jQuery));
 
