@@ -122,11 +122,6 @@ class RoleController extends Controller {
      */
     public function destroy(Role $role) {
         
-        echo "<pre>";
-        print_r($role);
-        echo "</pre>";
-        die();
-
         if (Auth::user()->roles->first()->name == 'admin') {
             $role = Role::find($role->id);
             $role->delete();
