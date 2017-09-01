@@ -12,6 +12,7 @@
 <div class="list-group">
     <a href="{{ url('/dashboard') }}" class="list-group-item {{ $active == 'dashboard'  ? 'active': '' }}"><span class="glyphicon glyphicon-home"></span>&nbsp;&nbsp; Home</a>
     <a href="{{ url('/dashboard/posts') }}" class="list-group-item {{ $active == 'posts'  ? 'active': '' }}"><span class="glyphicon glyphicon-list-alt"></span>&nbsp;&nbsp; Posts</a>
+    <a href="{{ url('/dashboard/media') }}" class="list-group-item {{ $active == 'media'  ? 'active': '' }}"><span class="glyphicon glyphicon-picture"></span>&nbsp;&nbsp; Media</a>
     <a href="{{ url('/dashboard/tools') }}" class="list-group-item {{ $active == 'tools'  ? 'active': '' }}"><span class="glyphicon glyphicon-wrench"></span>&nbsp;&nbsp; Tools</a>
 </div>
 @endif

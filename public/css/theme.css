@@ -30,4 +30,13 @@ table > tbody > tr > td{
     word-break: break-all;
 }
 
+.dropzone{
+    border: 2px dashed #0087F7 !important;
+    border-radius: 5px;
+    background: white !important;
+}
 
+.dropzone .dz-message {
+    font-size: 15px;
+    font-weight: 400;
+}

@@ -21,5 +21,5 @@ Route::get('/dashboard', 'DashboardController@index')->name('index');
 
 Route::resource('/dashboard/posts', 'PostController');
 Route::resource('/dashboard/users', 'UserController');
-//Route::resource('/dashboard/roles', 'RoleController');
+Route::resource('/dashboard/roles', 'RoleController');
 Route::resource('/dashboard/media', 'MediaController');

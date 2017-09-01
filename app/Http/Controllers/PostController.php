@@ -134,7 +134,7 @@ class PostController extends Controller {
      * @return \Illuminate\Http\Response
      */
     public function destroy(Post $post) {
-
+        
         if (($post->user_id == Auth::user()->id) || (Auth::user()->roles->first()->name == 'admin')) {
             $post = Post::find($post->id);
             $post->delete();

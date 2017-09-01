@@ -48,6 +48,17 @@ class User extends Authenticatable {
     public function posts() {
         return $this->belongsToMany('App\Post');
     }
+    
+    /**
+     * Add a single condition, or an array of conditions to the WHERE clause of the query.
+     * 
+     * @param   mixed   $conditions  A string or array of where conditions.
+     * @return  JDatabaseQuery  Returns this object to allow chaining.
+     * @since   1.0
+     */
+    public function medias() {
+        return $this->belongsToMany('App\Media');
+    }
 
     /**
      * Add a single condition, or an array of conditions to the WHERE clause of the query.
