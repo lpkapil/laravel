@@ -40,3 +40,20 @@ table > tbody > tr > td{
     font-size: 15px;
     font-weight: 400;
 }
+
+#app .dropdown-menu{
+    min-width: 144px !important;
+}
+
+.notfound, .welcomeapp{
+    font-size: 50px !important;
+    color:#777 !important;
+}
+
+.center{
+    text-align: center;
+}
+
+.padding150{
+    padding:150px 0px;
+}
