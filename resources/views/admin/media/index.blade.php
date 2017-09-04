@@ -35,6 +35,9 @@
                                     <a href="#" class="delete_media" data-id="{{ $medium->id }}" data-toggle="tooltip" title="Delete Media">
                                         <span class="glyphicon glyphicon-trash" role="button"></span>
                                     </a>
+                                    &nbsp;<a href="{{ url('/dashboard/media/'.$medium->id) }}" data-toggle="tooltip" title="View Media">
+                                        <span class="glyphicon glyphicon-eye-open"></span>
+                                    </a>
                                 </td>
                             </tr>
                             @endforeach

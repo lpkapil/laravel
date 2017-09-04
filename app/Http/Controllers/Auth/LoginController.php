@@ -66,7 +66,7 @@ class LoginController extends Controller {
         }
 
         $errors = [$this->username() => $errorMessage];
-
+        
         if ($request->expectsJson()) {
             return response()->json($errors, 422);
         }

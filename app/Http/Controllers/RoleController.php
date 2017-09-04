@@ -4,6 +4,10 @@ namespace App\Http\Controllers;
 
 use Auth;
 use App\Role;
+use App\User;
+use App\Post;
+use App\Media;
+use Storage;
 use Illuminate\Http\Request;
 
 class RoleController extends Controller {
@@ -121,9 +125,35 @@ class RoleController extends Controller {
      * @return \Illuminate\Http\Response
      */
     public function destroy(Role $role) {
-        
+
         if (Auth::user()->roles->first()->name == 'admin') {
             $role = Role::find($role->id);
+
+            //Find all users with this role
+            $users = User::whereHas('roles', function ($query) use ($role) {
+                        $query->where('name', '=', $role->name);
+                    })->get();
+
+            //Find Media and delete files from storage
+            foreach ($users as $user) {
+
+                $media = Media::where('user_id', $user->id)->get();
+
+                if (!empty($media)) {
+                    foreach ($media as $mediaitem) {
+                        Storage::delete($mediaitem->url);
+                    }
+                }
+
+                Media::where('user_id', $user->id)->delete();
+                Post::where('user_id', $user->id)->delete();
+            }
+
+            //Delete users
+            User::whereHas('roles', function ($query) use ($role) {
+                $query->where('name', '=', $role->name);
+            })->delete();
+
             $role->delete();
             return ['status' => true, 'message' => 'Role Deleted Successfully!'];
         }

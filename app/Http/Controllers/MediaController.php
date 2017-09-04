@@ -74,7 +74,12 @@ class MediaController extends Controller {
      * @return \Illuminate\Http\Response
      */
     public function show(Media $medium) {
-        //
+        $media = Media::with('user')->where('id', $medium->id)->get()->first();
+        if (!empty($media) && ((Auth::user()->roles->first()->name == 'admin') || (Auth::user()->id == $media->user->id))) {
+            return view('admin.media.show', compact('media'));
+        } else {
+            return response()->view('message.404', [], 404);
+        }
     }
 
     /**
@@ -105,7 +110,7 @@ class MediaController extends Controller {
      * @return \Illuminate\Http\Response
      */
     public function destroy(Media $medium) {
-        
+
         if (($medium->user_id == Auth::user()->id) || (Auth::user()->roles->first()->name == 'admin')) {
             $medium = Media::find($medium->id);
             Storage::delete($medium->url);

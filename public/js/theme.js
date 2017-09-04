@@ -63,7 +63,7 @@
         jQuery(document).on('change', '.file', function () {
             $(this).parent().find('.form-control').val($(this).val().replace(/C:\\fakepath\\/i, ''));
         });
-        
+
         //Delete Media
         jQuery('.delete_media').click(function (e) {
             e.preventDefault();
@@ -98,14 +98,10 @@
                     data: {_method: 'DELETE', _token: jQuery('meta[name="csrf-token"]').attr('content')},
                     dataType: 'json',
                     success: function (r) {
-
-                        console.log(r);
-
                         toastr.info(r.message);
                         setTimeout(function () {
                             window.location.reload();
                         }, 500);
-
                     },
                     error: function (jqXHR, textMessage) {
                         console.log(textMessage);
@@ -160,7 +156,24 @@
                 });
             }
         });
-        
+
+        //Tinymce
+        tinymce.init({
+            branding: false,
+            selector: 'textarea',
+            height: 250,
+            menubar: false,
+            plugins: [
+                'autolink lists link print preview textcolor',
+                'searchreplace visualblocks code fullscreen',
+                'table paste code'
+            ],
+            toolbar: 'undo redo |  styleselect | bold italic link | alignleft aligncenter alignright alignjustify | bullist numlist | removeformat | preview',
+            content_css: [
+                '//fonts.googleapis.com/css?family=Lato:300,300i,400,400i',
+                '//www.tinymce.com/css/codepen.min.css']
+        });
+
     });
 }(jQuery));
 

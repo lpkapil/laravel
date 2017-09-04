@@ -28,7 +28,7 @@ class UserTableSeeder extends Seeder {
         $subscriber->name = 'Subscriber User';
         $subscriber->email = 'lpkapil@mailinator.com';
         $subscriber->password = bcrypt('admin123');
-        $admin->status = true;
+        $subscriber->status = true;
         $subscriber->save();
         $subscriber->roles()->attach($role_subscriber);
     }
