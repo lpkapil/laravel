@@ -32,7 +32,7 @@
                                     <a href="{{ url('/dashboard/roles/'.$role->id.'/edit') }}" data-toggle="tooltip" title="Edit Role">
                                         <span class="glyphicon glyphicon-edit"></span>
                                     </a>
-                                    <a href="#" class="delete_role" data-id="{{ $role->id }}" data-toggle="tooltip" title="Delete Role">
+                                    &nbsp;<a href="" class="delete_role" data-id="{{ $role->id }}" data-toggle="tooltip" title="Delete Role">
                                         <span class="glyphicon glyphicon-trash" role="button"></span>
                                     </a>
                                     @endif

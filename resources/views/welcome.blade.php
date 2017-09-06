@@ -6,7 +6,7 @@
         <div class="col-md-12">
             <div class="content">
                 <div class="welcomeapp center padding150 m-b-md">
-                    Laravel
+                    Blog Web Application
                 </div>
             </div>
         </div>

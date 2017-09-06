@@ -36,11 +36,11 @@
                                         <span class="glyphicon glyphicon-edit"></span>
                                     </a>
                                     @if($user->roles->first()->name == 'admin')
-                                    <a href="#" class="disabled" data-id="{{ $user->id }}" data-toggle="tooltip" title="Disabled">
+                                    &nbsp;<a href="#" class="disabled" data-id="{{ $user->id }}" data-toggle="tooltip" title="Disabled">
                                         <span class="glyphicon glyphicon-trash btn-default" role="button"></span>
                                     </a>
                                     @else
-                                    <a href="#" class="delete_user" data-id="{{ $user->id }}" data-toggle="tooltip" title="Delete User">
+                                    &nbsp;<a href="" class="delete_user" data-id="{{ $user->id }}" data-toggle="tooltip" title="Delete User">
                                         <span class="glyphicon glyphicon-trash" role="button"></span>
                                     </a>
                                     @endif

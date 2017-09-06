@@ -11,12 +11,9 @@
 |
 */
 
-//Application Home
-Route::get('/', function () {
-    return view('welcome');
-});
-
 Auth::routes();
+Route::get('/', 'PageController@index');
+Route::get('/posts/{post}', 'PageController@singlepost');
 Route::get('/dashboard', 'DashboardController@index');
 Route::resource('/dashboard/posts', 'PostController');
 Route::resource('/dashboard/users', 'UserController');

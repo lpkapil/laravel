@@ -57,3 +57,19 @@ table > tbody > tr > td{
 .padding150{
     padding:150px 0px;
 }
+
+.padding10{
+    padding:10px 0px 0px 0px;
+}
+
+.editlink{
+    color: #333 !important;
+    text-decoration: none !important;
+}
+
+.previewmedia{
+    width: 300px;
+    max-width:300px;
+    min-height: 187.5px;
+    max-height: 187.5px;
+}

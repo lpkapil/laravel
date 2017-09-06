@@ -1,6 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project-private xmlns="http://www.netbeans.org/ns/project-private/1">
+    <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
-        <group name="NikhilamEmpire"/>
+        <group name="NikhilamEmpire">
+            <file>file:/var/www/html/blog/resources/views/admin/posts/index.blade.php</file>
+            <file>file:/var/www/html/blog/config/filesystems.php</file>
+            <file>file:/var/www/html/blog/app/Http/Controllers/UserController.php</file>
+            <file>file:/var/www/html/blog/resources/views/admin/roles/index.blade.php</file>
+            <file>file:/var/www/html/blog/public/js/theme.js</file>
+            <file>file:/var/www/html/blog/resources/views/postdetail.blade.php</file>
+            <file>file:/var/www/html/blog/app/Http/Controllers/MediaController.php</file>
+            <file>file:/var/www/html/blog/resources/views/layouts/app.blade.php</file>
+            <file>file:/var/www/html/blog/resources/views/admin/users/index.blade.php</file>
+            <file>file:/var/www/html/blog/public/css/theme.css</file>
+            <file>file:/var/www/html/blog/app/Http/Controllers/RoleController.php</file>
+            <file>file:/var/www/html/blog/app/Http/Controllers/PostController.php</file>
+            <file>file:/var/www/html/blog/app/Role.php</file>
+            <file>file:/var/www/html/blog/resources/views/admin/media/index.blade.php</file>
+            <file>file:/var/www/html/blog/resources/views/admin/media/show.blade.php</file>
+            <file>file:/var/www/html/blog/resources/views/posts.blade.php</file>
+            <file>file:/var/www/html/blog/app/Http/Kernel.php</file>
+            <file>file:/var/www/html/blog/app/Http/Controllers/PageController.php</file>
+        </group>
     </open-files>
 </project-private>

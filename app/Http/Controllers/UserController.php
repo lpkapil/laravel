@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\User;
+use App\Media;
+use App\Post;
+use Storage;
 use App\Role;
 use Auth;
 use Illuminate\Http\Request;
@@ -98,14 +101,14 @@ class UserController extends Controller {
      * @return \Illuminate\Http\Response
      */
     public function update(Request $request, User $user) {
-        
+
         if (Auth::user()->roles->first()->name != 'admin') {
             return ['status' => false, 'message' => 'Unauthorized Action!'];
         }
 
         $this->Validate($request, [
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,'.$user->id,
+            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
             'status' => 'required|boolean',
         ]);
 
@@ -115,7 +118,7 @@ class UserController extends Controller {
                 'password' => 'string|min:6',
             ]);
         }
-        
+
         $user = User::find($user->id);
         $user->name = $request['name'];
         $user->email = $request['email'];
@@ -124,10 +127,10 @@ class UserController extends Controller {
         }
         $user->status = $request['status'];
         $user->save();
-        
+
         $user->roles()->detach($user->roles->first()->id);
         $user->roles()->attach(Role::where('id', $request['role_id'])->first());
-        
+
         return redirect('/dashboard/users');
     }
 
@@ -145,6 +148,19 @@ class UserController extends Controller {
 
         $user = User::find($user->id);
         $user->roles()->detach($user->roles->first()->id); // Detach User Roles Mapping Before Delete 
+        
+        //Find Media and delete files from storage
+        $media = Media::where('user_id', $user->id)->get();
+
+        if (!empty($media)) {
+            foreach ($media as $mediaitem) {
+                Storage::delete('/public/'.$mediaitem->url);
+            }
+        }
+
+        Media::where('user_id', $user->id)->delete();
+        Post::where('user_id', $user->id)->delete();
+        
         $user->delete();
         return ['status' => true, 'message' => 'User Deleted Successfully!'];
     }

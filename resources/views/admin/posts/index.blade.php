@@ -32,12 +32,21 @@
                                 <td>{{ \Carbon\Carbon::parse($post->created_at)->format('j M Y, h:i:s A') }}</td>
                                 <td>{{ \Carbon\Carbon::parse($post->updated_at)->format('j M Y, h:i:s A') }}</td>
                                 <td>
-                                    <a href="{{ url('/dashboard/posts/'.$post->id.'/edit') }}">
+                                    <a href="{{ url('/dashboard/posts/'.$post->id.'/edit') }}" data-toggle="tooltip" title="Edit Post">
                                         <span class="glyphicon glyphicon-edit"></span>
                                     </a>
-                                    <a href="#" class="delete_post" data-id="{{ $post->id }}">
+                                    &nbsp;<a href="" class="delete_post" data-id="{{ $post->id }}" data-toggle="tooltip" title="Delete Post">
                                         <span class="glyphicon glyphicon-trash" role="button"></span>
                                     </a>
+                                    @if($post->status == 1)
+                                    &nbsp;<a href="{{ url('posts/'.$post->id) }}" data-toggle="tooltip" title="View Post">
+                                        <span class="glyphicon glyphicon-eye-open"></span>
+                                    </a>
+                                    @else
+                                     &nbsp;<a href="#" data-toggle="tooltip" title="Disabled: Post Deleted">
+                                        <span class="glyphicon glyphicon-eye-close"></span>
+                                    </a>
+                                    @endif
                                 </td>
                             </tr>
                             @endforeach

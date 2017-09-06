@@ -54,13 +54,14 @@ class MediaController extends Controller {
             'file' => 'required|image|max:2000'
         ]);
 
-        $filePath = Storage::url($request->file('file')->store('public'));
+        $request->file('file')->store('public');
+        $fileName = $request->file('file')->hashName();
 
         Media::create([
             'name' => $file->getClientOriginalName(),
             'type' => $file->getClientMimeType(),
             'size' => $file->getClientSize(),
-            'url' => $filePath,
+            'url' => $fileName,
             'user_id' => Auth::user()->id
         ]);
 
@@ -74,7 +75,12 @@ class MediaController extends Controller {
      * @return \Illuminate\Http\Response
      */
     public function show(Media $medium) {
-        //
+        $media = Media::with('user')->where('id', $medium->id)->get()->first();
+        if (!empty($media) && ((Auth::user()->roles->first()->name == 'admin') || (Auth::user()->id == $media->user->id))) {
+            return view('admin.media.show', compact('media'));
+        } else {
+            return response()->view('message.404', [], 404);
+        }
     }
 
     /**
@@ -105,10 +111,10 @@ class MediaController extends Controller {
      * @return \Illuminate\Http\Response
      */
     public function destroy(Media $medium) {
-        
+
         if (($medium->user_id == Auth::user()->id) || (Auth::user()->roles->first()->name == 'admin')) {
             $medium = Media::find($medium->id);
-            Storage::delete($medium->url);
+            Storage::delete('/public/' . $medium->url);
             $medium->delete();
             return ['status' => true, 'message' => 'Media Deleted Successfully!'];
         }
