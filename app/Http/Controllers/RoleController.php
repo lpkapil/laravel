@@ -141,19 +141,18 @@ class RoleController extends Controller {
 
                 if (!empty($media)) {
                     foreach ($media as $mediaitem) {
-                        Storage::delete($mediaitem->url);
+                        Storage::delete('/public/'.$mediaitem->url);
                     }
                 }
 
                 Media::where('user_id', $user->id)->delete();
                 Post::where('user_id', $user->id)->delete();
+                
+                //Dettach user roles and delete user
+                $user->roles()->detach($user->roles->first()->id);
+                $user->delete();
             }
-
-            //Delete users
-            User::whereHas('roles', function ($query) use ($role) {
-                $query->where('name', '=', $role->name);
-            })->delete();
-
+            
             $role->delete();
             return ['status' => true, 'message' => 'Role Deleted Successfully!'];
         }

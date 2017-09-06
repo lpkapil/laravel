@@ -13,7 +13,7 @@
                 <div class="panel-body">
                     <div class="row">
                         <div class="col-md-5">
-                            <img src='{{ $media->url }}' class="previewmedia">
+                            <img src='{{ '/storage/'.$media->url }}' class="previewmedia">
                         </div>
                         <div class="col-md-7">
                             <span>Name:</span> {{ $media->name }}<br><br>

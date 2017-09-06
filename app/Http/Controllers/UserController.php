@@ -154,13 +154,13 @@ class UserController extends Controller {
 
         if (!empty($media)) {
             foreach ($media as $mediaitem) {
-                Storage::delete($mediaitem->url);
+                Storage::delete('/public/'.$mediaitem->url);
             }
         }
 
         Media::where('user_id', $user->id)->delete();
         Post::where('user_id', $user->id)->delete();
-
+        
         $user->delete();
         return ['status' => true, 'message' => 'User Deleted Successfully!'];
     }
