@@ -24,26 +24,12 @@ class DashboardController extends Controller {
     public function index(Request $request) {
 
         if ($request->user()->authorizeRoles(['admin'])) {
-
-
-//            Mail::raw('Hello Kapil', function ($message) {
-//                $message->to('lpkapil@mailinator.com');
-//            });
-
             return view('admin.dashboard');
         }
         if ($request->user()->authorizeRoles(['subscriber'])) {
             return view('subscriber.dashboard');
         }
-
-        abort(401, 'This action is unauthorized.');
+        
+        return response()->view('message.404', ['message' => 'Error : View Needs to be created for '.$request->user()->roles->first()->name.' role.'], 404);
     }
-
-    /*
-      public function someAdminStuff(Request $request)
-      {
-      $request->user()->authorizeRoles('manager');
-      return view(‘some.view’);
-      }
-     */
 }
