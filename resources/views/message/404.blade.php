@@ -6,7 +6,9 @@
         <div class="col-md-12">
             <div class="content">
                 <div class="notfound center padding150 m-b-md">
-                    Error - 404 Not Found
+                    @if($message)
+                        {{ $message }}
+                    @endif
                 </div>
             </div>
         </div>
