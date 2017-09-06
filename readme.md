@@ -4,9 +4,9 @@
 Version: 5.4.33
 </p>
 
-## About
+## About Application
 
-This is simple blog application with Admin/Subscriber user role users and dashboard, Developed using Laravel v5.4.33. 
+This is Simple Blog application with Administrator and Subscriber role users and dashboard, Developed using Laravel v5.4.33. 
 
 - Login/Registration Module
 - Posts Management Module
