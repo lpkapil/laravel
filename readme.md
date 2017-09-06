@@ -39,7 +39,9 @@ Pull Latest code:
 
 `service apache2 restart`
 
-- Run below command after navigating to application root for installing database
+- Run below command after navigating to application root for refreshing application key & installing database
+
+`php artisan key:generate`
 
 `php artisan migrate:refresh --seed`
 
