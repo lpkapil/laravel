@@ -18,7 +18,10 @@ This is simple blog application with Admin/Subscriber user role users and dashbo
 
 Pull Latest code from Repository: 
 
-- Github Repository: https://github.com/lpkapil/laravel.git
+- Github Repository: 
+
+`https://github.com/lpkapil/laravel.git`
+
 - Create Virtual Host & Host Entry in apache configuration and host file and restart apache server
 
 ```
@@ -34,7 +37,7 @@ Pull Latest code from Repository:
 </VirtualHost>
 ```
 
-`127.0.0.1 laravellocal.com``
+`127.0.0.1 laravellocal.com`
 
 `service apache2 restart`
 
@@ -48,6 +51,17 @@ Pull Latest code from Repository:
 
 ## Login Details
 
+`
+#### Administrator #### 
+
+Username: admin@example.com
+Password: admin
+
+#### Subscriber ####
+
+Username: subscriber@example.com
+Password: subscriber
+`
 ## Learning Laravel
 
 Laravel has the most extensive and thorough documentation and video tutorial library of any modern web application framework. The [Laravel documentation](https://laravel.com/docs) is thorough, complete, and makes it a breeze to get started learning the framework.
