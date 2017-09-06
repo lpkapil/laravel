@@ -16,9 +16,7 @@ This is simple blog application with Admin/Subscriber user role users and dashbo
 
 ## Installation Procedure
 
-Pull Latest code from Repository: 
-
-- Github Repository: 
+Pull Latest code: 
 
 `https://github.com/lpkapil/laravel.git`
 
