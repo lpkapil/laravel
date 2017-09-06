@@ -21,7 +21,7 @@ Pull Latest code from Repository:
 - Github Repository: https://github.com/lpkapil/laravel.git
 - Create Virtual Host & Host Entry in apache configuration and host file and restart apache server
 
-`<VirtualHost *:80>
+```<VirtualHost *:80>
         ServerAdmin webmaster@example.com
         ServerName laravellocal.com
         ServerAlias laravellocal.com
@@ -30,11 +30,11 @@ Pull Latest code from Repository:
                 AllowOverride all
                 Require all granted
         </Directory>
-</VirtualHost>
+</VirtualHost>```
 
-127.0.0.1 laravellocal.com
+`127.0.0.1 laravellocal.com``
 
-service apache2 restart`
+`service apache2 restart`
 
 - Run below command after navigating to application root for installing database
 
