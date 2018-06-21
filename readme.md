@@ -1,7 +1,7 @@
 <p align="center"><img src="https://laravel.com/assets/img/components/logo-laravel.svg"></p>
 
 <p align="center">
-Version: 5.4.33
+Versions: 5.4.33
 </p>
 
 ## About Application
