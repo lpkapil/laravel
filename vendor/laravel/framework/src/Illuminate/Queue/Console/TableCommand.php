@@ -2,10 +2,10 @@
 
 namespace Illuminate\Queue\Console;
 
-use Illuminate\Support\Str;
 use Illuminate\Console\Command;
-use Illuminate\Support\Composer;
 use Illuminate\Filesystem\Filesystem;
+use Illuminate\Support\Composer;
+use Illuminate\Support\Str;
 
 class TableCommand extends Command
 {
@@ -55,7 +55,7 @@ class TableCommand extends Command
      *
      * @return void
      */
-    public function fire()
+    public function handle()
     {
         $table = $this->laravel['config']['queue.connections.database.table'];
 

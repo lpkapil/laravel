@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\User;
 use App\Http\Controllers\Controller;
 use Illuminate\Foundation\Auth\AuthenticatesUsers;
+use Illuminate\Support\Arr;
 
 class LoginController extends Controller {
     /*
@@ -46,7 +47,7 @@ class LoginController extends Controller {
     public function credentials(\Illuminate\Http\Request $request) {
         $credentials = $request->only($this->username(), 'password');
 
-        return array_add($credentials, 'status', '1');
+        return Arr::add($credentials, 'status', '1');
     }
 
     /**

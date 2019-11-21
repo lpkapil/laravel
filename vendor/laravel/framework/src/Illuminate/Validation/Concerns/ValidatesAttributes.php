@@ -2,20 +2,28 @@
 
 namespace Illuminate\Validation\Concerns;
 
-use DateTime;
 use Countable;
-use Exception;
-use Throwable;
-use DateTimeZone;
+use DateTime;
 use DateTimeInterface;
+use DateTimeZone;
+use Egulias\EmailValidator\EmailValidator;
+use Egulias\EmailValidator\Validation\DNSCheckValidation;
+use Egulias\EmailValidator\Validation\MultipleValidationWithAnd;
+use Egulias\EmailValidator\Validation\NoRFCWarningsValidation;
+use Egulias\EmailValidator\Validation\RFCValidation;
+use Egulias\EmailValidator\Validation\SpoofCheckValidation;
+use Exception;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Str;
-use InvalidArgumentException;
 use Illuminate\Validation\Rules\Exists;
 use Illuminate\Validation\Rules\Unique;
 use Illuminate\Validation\ValidationData;
+use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\File\File;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Throwable;
 
 trait ValidatesAttributes
 {
@@ -28,7 +36,7 @@ trait ValidatesAttributes
      * @param  mixed   $value
      * @return bool
      */
-    protected function validateAccepted($attribute, $value)
+    public function validateAccepted($attribute, $value)
     {
         $acceptable = ['yes', 'on', '1', 1, true, 'true'];
 
@@ -42,7 +50,7 @@ trait ValidatesAttributes
      * @param  mixed   $value
      * @return bool
      */
-    protected function validateActiveUrl($attribute, $value)
+    public function validateActiveUrl($attribute, $value)
     {
         if (! is_string($value)) {
             return false;
@@ -66,7 +74,7 @@ trait ValidatesAttributes
      *
      * @return bool
      */
-    protected function validateBail()
+    public function validateBail()
     {
         return true;
     }
@@ -79,7 +87,7 @@ trait ValidatesAttributes
      * @param  array   $parameters
      * @return bool
      */
-    protected function validateBefore($attribute, $value, $parameters)
+    public function validateBefore($attribute, $value, $parameters)
     {
         $this->requireParameterCount(1, $parameters, 'before');
 
@@ -94,7 +102,7 @@ trait ValidatesAttributes
      * @param  array   $parameters
      * @return bool
      */
-    protected function validateBeforeOrEqual($attribute, $value, $parameters)
+    public function validateBeforeOrEqual($attribute, $value, $parameters)
     {
         $this->requireParameterCount(1, $parameters, 'before_or_equal');
 
@@ -109,7 +117,7 @@ trait ValidatesAttributes
      * @param  array   $parameters
      * @return bool
      */
-    protected function validateAfter($attribute, $value, $parameters)
+    public function validateAfter($attribute, $value, $parameters)
     {
         $this->requireParameterCount(1, $parameters, 'after');
 
@@ -124,7 +132,7 @@ trait ValidatesAttributes
      * @param  array   $parameters
      * @return bool
      */
-    protected function validateAfterOrEqual($attribute, $value, $parameters)
+    public function validateAfterOrEqual($attribute, $value, $parameters)
     {
         $this->requireParameterCount(1, $parameters, 'after_or_equal');
 
@@ -147,9 +155,7 @@ trait ValidatesAttributes
         }
 
         if ($format = $this->getDateFormat($attribute)) {
-            return $this->checkDateTimeOrder(
-                $format, $value, $this->getValue($parameters[0]) ?: $parameters[0], $operator
-            );
+            return $this->checkDateTimeOrder($format, $value, $parameters[0], $operator);
         }
 
         if (! $date = $this->getDateTimestamp($parameters[0])) {
@@ -180,7 +186,19 @@ trait ValidatesAttributes
      */
     protected function getDateTimestamp($value)
     {
-        return $value instanceof DateTimeInterface ? $value->getTimestamp() : strtotime($value);
+        if ($value instanceof DateTimeInterface) {
+            return $value->getTimestamp();
+        }
+
+        if ($this->isTestingRelativeDateTime($value)) {
+            $date = $this->getDateTime($value);
+
+            if (! is_null($date)) {
+                return $date->getTimestamp();
+            }
+        }
+
+        return strtotime($value);
     }
 
     /**
@@ -194,11 +212,13 @@ trait ValidatesAttributes
      */
     protected function checkDateTimeOrder($format, $first, $second, $operator)
     {
-        $first = $this->getDateTimeWithOptionalFormat($format, $first);
+        $firstDate = $this->getDateTimeWithOptionalFormat($format, $first);
 
-        $second = $this->getDateTimeWithOptionalFormat($format, $second);
+        if (! $secondDate = $this->getDateTimeWithOptionalFormat($format, $second)) {
+            $secondDate = $this->getDateTimeWithOptionalFormat($format, $this->getValue($second));
+        }
 
-        return ($first && $second) && ($this->compare($first, $second, $operator));
+        return ($firstDate && $secondDate) && ($this->compare($firstDate, $secondDate, $operator));
     }
 
     /**
@@ -210,15 +230,43 @@ trait ValidatesAttributes
      */
     protected function getDateTimeWithOptionalFormat($format, $value)
     {
-        if ($date = DateTime::createFromFormat($format, $value)) {
+        if ($date = DateTime::createFromFormat('!'.$format, $value)) {
             return $date;
         }
 
+        return $this->getDateTime($value);
+    }
+
+    /**
+     * Get a DateTime instance from a string with no format.
+     *
+     * @param  string $value
+     * @return \DateTime|null
+     */
+    protected function getDateTime($value)
+    {
         try {
-            return new DateTime($value);
+            if ($this->isTestingRelativeDateTime($value)) {
+                return Date::parse($value);
+            }
+
+            return date_create($value) ?: null;
         } catch (Exception $e) {
             //
         }
+    }
+
+    /**
+     * Check if the given value should be adjusted to Carbon::getTestNow().
+     *
+     * @param  mixed $value
+     * @return bool
+     */
+    protected function isTestingRelativeDateTime($value)
+    {
+        return Carbon::hasTestNow() && is_string($value) && (
+            $value === 'now' || Carbon::hasRelativeKeywords($value)
+        );
     }
 
     /**
@@ -228,7 +276,7 @@ trait ValidatesAttributes
      * @param  mixed   $value
      * @return bool
      */
-    protected function validateAlpha($attribute, $value)
+    public function validateAlpha($attribute, $value)
     {
         return is_string($value) && preg_match('/^[\pL\pM]+$/u', $value);
     }
@@ -240,7 +288,7 @@ trait ValidatesAttributes
      * @param  mixed   $value
      * @return bool
      */
-    protected function validateAlphaDash($attribute, $value)
+    public function validateAlphaDash($attribute, $value)
     {
         if (! is_string($value) && ! is_numeric($value)) {
             return false;
@@ -256,7 +304,7 @@ trait ValidatesAttributes
      * @param  mixed   $value
      * @return bool
      */
-    protected function validateAlphaNum($attribute, $value)
+    public function validateAlphaNum($attribute, $value)
     {
         if (! is_string($value) && ! is_numeric($value)) {
             return false;
@@ -272,7 +320,7 @@ trait ValidatesAttributes
      * @param  mixed   $value
      * @return bool
      */
-    protected function validateArray($attribute, $value)
+    public function validateArray($attribute, $value)
     {
         return is_array($value);
     }
@@ -285,7 +333,7 @@ trait ValidatesAttributes
      * @param  array   $parameters
      * @return bool
      */
-    protected function validateBetween($attribute, $value, $parameters)
+    public function validateBetween($attribute, $value, $parameters)
     {
         $this->requireParameterCount(2, $parameters, 'between');
 
@@ -301,7 +349,7 @@ trait ValidatesAttributes
      * @param  mixed   $value
      * @return bool
      */
-    protected function validateBoolean($attribute, $value)
+    public function validateBoolean($attribute, $value)
     {
         $acceptable = [true, false, 0, 1, '0', '1'];
 
@@ -315,7 +363,7 @@ trait ValidatesAttributes
      * @param  mixed   $value
      * @return bool
      */
-    protected function validateConfirmed($attribute, $value)
+    public function validateConfirmed($attribute, $value)
     {
         return $this->validateSame($attribute, $value, [$attribute.'_confirmation']);
     }
@@ -327,9 +375,9 @@ trait ValidatesAttributes
      * @param  mixed   $value
      * @return bool
      */
-    protected function validateDate($attribute, $value)
+    public function validateDate($attribute, $value)
     {
-        if ($value instanceof DateTime) {
+        if ($value instanceof DateTimeInterface) {
             return true;
         }
 
@@ -350,7 +398,7 @@ trait ValidatesAttributes
      * @param  array   $parameters
      * @return bool
      */
-    protected function validateDateFormat($attribute, $value, $parameters)
+    public function validateDateFormat($attribute, $value, $parameters)
     {
         $this->requireParameterCount(1, $parameters, 'date_format');
 
@@ -358,11 +406,26 @@ trait ValidatesAttributes
             return false;
         }
 
-        $format = $parameters[0] == 'Y-m' ? '!Y-m' : $parameters[0];
+        $format = $parameters[0];
 
-        $date = DateTime::createFromFormat($format, $value);
+        $date = DateTime::createFromFormat('!'.$format, $value);
 
-        return $date && $date->format($parameters[0]) == $value;
+        return $date && $date->format($format) == $value;
+    }
+
+    /**
+     * Validate that an attribute is equal to another date.
+     *
+     * @param  string  $attribute
+     * @param  mixed   $value
+     * @param  array   $parameters
+     * @return bool
+     */
+    public function validateDateEquals($attribute, $value, $parameters)
+    {
+        $this->requireParameterCount(1, $parameters, 'date_equals');
+
+        return $this->compareDates($attribute, $value, $parameters, '=');
     }
 
     /**
@@ -373,14 +436,18 @@ trait ValidatesAttributes
      * @param  array   $parameters
      * @return bool
      */
-    protected function validateDifferent($attribute, $value, $parameters)
+    public function validateDifferent($attribute, $value, $parameters)
     {
         $this->requireParameterCount(1, $parameters, 'different');
 
         foreach ($parameters as $parameter) {
+            if (! Arr::has($this->data, $parameter)) {
+                return false;
+            }
+
             $other = Arr::get($this->data, $parameter);
 
-            if (is_null($other) || $value === $other) {
+            if ($value === $other) {
                 return false;
             }
         }
@@ -396,7 +463,7 @@ trait ValidatesAttributes
      * @param  array   $parameters
      * @return bool
      */
-    protected function validateDigits($attribute, $value, $parameters)
+    public function validateDigits($attribute, $value, $parameters)
     {
         $this->requireParameterCount(1, $parameters, 'digits');
 
@@ -412,7 +479,7 @@ trait ValidatesAttributes
      * @param  array   $parameters
      * @return bool
      */
-    protected function validateDigitsBetween($attribute, $value, $parameters)
+    public function validateDigitsBetween($attribute, $value, $parameters)
     {
         $this->requireParameterCount(2, $parameters, 'digits_between');
 
@@ -430,15 +497,19 @@ trait ValidatesAttributes
      * @param  array $parameters
      * @return bool
      */
-    protected function validateDimensions($attribute, $value, $parameters)
+    public function validateDimensions($attribute, $value, $parameters)
     {
+        if ($this->isValidFileInstance($value) && in_array($value->getMimeType(), ['image/svg+xml', 'image/svg'])) {
+            return true;
+        }
+
         if (! $this->isValidFileInstance($value) || ! $sizeDetails = @getimagesize($value->getRealPath())) {
             return false;
         }
 
         $this->requireParameterCount(1, $parameters, 'dimensions');
 
-        list($width, $height) = $sizeDetails;
+        [$width, $height] = $sizeDetails;
 
         $parameters = $this->parseNamedParameters($parameters);
 
@@ -482,7 +553,7 @@ trait ValidatesAttributes
             return false;
         }
 
-        list($numerator, $denominator) = array_replace(
+        [$numerator, $denominator] = array_replace(
             [1, 1], array_filter(sscanf($parameters['ratio'], '%f/%d'))
         );
 
@@ -499,33 +570,90 @@ trait ValidatesAttributes
      * @param  array   $parameters
      * @return bool
      */
-    protected function validateDistinct($attribute, $value, $parameters)
+    public function validateDistinct($attribute, $value, $parameters)
+    {
+        $data = Arr::except($this->getDistinctValues($attribute), $attribute);
+
+        if (in_array('ignore_case', $parameters)) {
+            return empty(preg_grep('/^'.preg_quote($value, '/').'$/iu', $data));
+        }
+
+        return ! in_array($value, array_values($data));
+    }
+
+    /**
+     * Get the values to distinct between.
+     *
+     * @param  string  $attribute
+     * @return array
+     */
+    protected function getDistinctValues($attribute)
     {
         $attributeName = $this->getPrimaryAttribute($attribute);
 
+        if (! property_exists($this, 'distinctValues')) {
+            return $this->extractDistinctValues($attributeName);
+        }
+
+        if (! array_key_exists($attributeName, $this->distinctValues)) {
+            $this->distinctValues[$attributeName] = $this->extractDistinctValues($attributeName);
+        }
+
+        return $this->distinctValues[$attributeName];
+    }
+
+    /**
+     * Extract the distinct values from the data.
+     *
+     * @param  string  $attribute
+     * @return array
+     */
+    protected function extractDistinctValues($attribute)
+    {
         $attributeData = ValidationData::extractDataFromPath(
-            ValidationData::getLeadingExplicitAttributePath($attributeName), $this->data
+            ValidationData::getLeadingExplicitAttributePath($attribute), $this->data
         );
 
-        $pattern = str_replace('\*', '[^.]+', preg_quote($attributeName, '#'));
+        $pattern = str_replace('\*', '[^.]+', preg_quote($attribute, '#'));
 
-        $data = Arr::where(Arr::dot($attributeData), function ($value, $key) use ($attribute, $pattern) {
-            return $key != $attribute && (bool) preg_match('#^'.$pattern.'\z#u', $key);
+        return Arr::where(Arr::dot($attributeData), function ($value, $key) use ($pattern) {
+            return (bool) preg_match('#^'.$pattern.'\z#u', $key);
         });
-
-        return ! in_array($value, array_values($data));
     }
 
     /**
      * Validate that an attribute is a valid e-mail address.
      *
      * @param  string  $attribute
-     * @param  mixed   $value
+     * @param  mixed  $value
+     * @param  array  $parameters
      * @return bool
      */
-    protected function validateEmail($attribute, $value)
+    public function validateEmail($attribute, $value, $parameters)
     {
-        return filter_var($value, FILTER_VALIDATE_EMAIL) !== false;
+        if (! is_string($value) && ! (is_object($value) && method_exists($value, '__toString'))) {
+            return false;
+        }
+
+        $validations = collect($parameters)
+            ->unique()
+            ->map(function ($validation) {
+                if ($validation === 'rfc') {
+                    return new RFCValidation();
+                } elseif ($validation === 'strict') {
+                    return new NoRFCWarningsValidation();
+                } elseif ($validation === 'dns') {
+                    return new DNSCheckValidation();
+                } elseif ($validation === 'spoof') {
+                    return new SpoofCheckValidation();
+                } elseif ($validation === 'filter') {
+                    return new FilterEmailValidation();
+                }
+            })
+            ->values()
+            ->all() ?: [new RFCValidation()];
+
+        return (new EmailValidator)->isValid($value, new MultipleValidationWithAnd($validations));
     }
 
     /**
@@ -536,18 +664,18 @@ trait ValidatesAttributes
      * @param  array   $parameters
      * @return bool
      */
-    protected function validateExists($attribute, $value, $parameters)
+    public function validateExists($attribute, $value, $parameters)
     {
         $this->requireParameterCount(1, $parameters, 'exists');
 
-        list($connection, $table) = $this->parseTable($parameters[0]);
+        [$connection, $table] = $this->parseTable($parameters[0]);
 
         // The second parameter position holds the name of the column that should be
         // verified as existing. If this parameter is not specified we will guess
         // that the columns being "verified" shares the given attribute's name.
         $column = $this->getQueryColumn($parameters, $attribute);
 
-        $expected = (is_array($value)) ? count($value) : 1;
+        $expected = is_array($value) ? count(array_unique($value)) : 1;
 
         return $this->getExistCount(
             $connection, $table, $column, $value, $parameters
@@ -591,21 +719,25 @@ trait ValidatesAttributes
      * @param  array   $parameters
      * @return bool
      */
-    protected function validateUnique($attribute, $value, $parameters)
+    public function validateUnique($attribute, $value, $parameters)
     {
         $this->requireParameterCount(1, $parameters, 'unique');
 
-        list($connection, $table) = $this->parseTable($parameters[0]);
+        [$connection, $table] = $this->parseTable($parameters[0]);
 
         // The second parameter position holds the name of the column that needs to
         // be verified as unique. If this parameter isn't specified we will just
         // assume that this column to be verified shares the attribute's name.
         $column = $this->getQueryColumn($parameters, $attribute);
 
-        list($idColumn, $id) = [null, null];
+        [$idColumn, $id] = [null, null];
 
         if (isset($parameters[2])) {
-            list($idColumn, $id) = $this->getUniqueIds($parameters);
+            [$idColumn, $id] = $this->getUniqueIds($parameters);
+
+            if (! is_null($id)) {
+                $id = stripslashes($id);
+            }
         }
 
         // The presence verifier is responsible for counting rows within this store
@@ -632,7 +764,7 @@ trait ValidatesAttributes
      */
     protected function getUniqueIds($parameters)
     {
-        $idColumn = isset($parameters[3]) ? $parameters[3] : 'id';
+        $idColumn = $parameters[3] ?? 'id';
 
         return [$idColumn, $this->prepareUniqueId($parameters[2])];
     }
@@ -649,12 +781,12 @@ trait ValidatesAttributes
             $id = $this->getValue($matches[1]);
         }
 
-        if (strtolower($id) == 'null') {
+        if (strtolower($id) === 'null') {
             $id = null;
         }
 
         if (filter_var($id, FILTER_VALIDATE_INT) !== false) {
-            $id = intval($id);
+            $id = (int) $id;
         }
 
         return $id;
@@ -681,7 +813,7 @@ trait ValidatesAttributes
      * @param  string  $table
      * @return array
      */
-    protected function parseTable($table)
+    public function parseTable($table)
     {
         return Str::contains($table, '.') ? explode('.', $table, 2) : [null, $table];
     }
@@ -693,7 +825,7 @@ trait ValidatesAttributes
      * @param  string  $attribute
      * @return bool
      */
-    protected function getQueryColumn($parameters, $attribute)
+    public function getQueryColumn($parameters, $attribute)
     {
         return isset($parameters[1]) && $parameters[1] !== 'NULL'
                     ? $parameters[1] : $this->guessColumnForQuery($attribute);
@@ -707,7 +839,7 @@ trait ValidatesAttributes
      */
     public function guessColumnForQuery($attribute)
     {
-        if (in_array($attribute, array_collapse($this->implicitAttributes))
+        if (in_array($attribute, Arr::collapse($this->implicitAttributes))
                 && ! is_numeric($last = last(explode('.', $attribute)))) {
             return $last;
         }
@@ -741,7 +873,7 @@ trait ValidatesAttributes
      * @param  mixed   $value
      * @return bool
      */
-    protected function validateFile($attribute, $value)
+    public function validateFile($attribute, $value)
     {
         return $this->isValidFileInstance($value);
     }
@@ -753,7 +885,7 @@ trait ValidatesAttributes
      * @param  mixed   $value
      * @return bool
      */
-    protected function validateFilled($attribute, $value)
+    public function validateFilled($attribute, $value)
     {
         if (Arr::has($this->data, $attribute)) {
             return $this->validateRequired($attribute, $value);
@@ -763,15 +895,139 @@ trait ValidatesAttributes
     }
 
     /**
+     * Validate that an attribute is greater than another attribute.
+     *
+     * @param  string  $attribute
+     * @param  mixed   $value
+     * @param  array   $parameters
+     * @return bool
+     */
+    public function validateGt($attribute, $value, $parameters)
+    {
+        $this->requireParameterCount(1, $parameters, 'gt');
+
+        $comparedToValue = $this->getValue($parameters[0]);
+
+        $this->shouldBeNumeric($attribute, 'Gt');
+
+        if (is_null($comparedToValue) && (is_numeric($value) && is_numeric($parameters[0]))) {
+            return $this->getSize($attribute, $value) > $parameters[0];
+        }
+
+        if ($this->hasRule($attribute, $this->numericRules) && is_numeric($value) && is_numeric($comparedToValue)) {
+            return $value > $comparedToValue;
+        }
+
+        if (! $this->isSameType($value, $comparedToValue)) {
+            return false;
+        }
+
+        return $this->getSize($attribute, $value) > $this->getSize($attribute, $comparedToValue);
+    }
+
+    /**
+     * Validate that an attribute is less than another attribute.
+     *
+     * @param  string  $attribute
+     * @param  mixed   $value
+     * @param  array   $parameters
+     * @return bool
+     */
+    public function validateLt($attribute, $value, $parameters)
+    {
+        $this->requireParameterCount(1, $parameters, 'lt');
+
+        $comparedToValue = $this->getValue($parameters[0]);
+
+        $this->shouldBeNumeric($attribute, 'Lt');
+
+        if (is_null($comparedToValue) && (is_numeric($value) && is_numeric($parameters[0]))) {
+            return $this->getSize($attribute, $value) < $parameters[0];
+        }
+
+        if ($this->hasRule($attribute, $this->numericRules) && is_numeric($value) && is_numeric($comparedToValue)) {
+            return $value < $comparedToValue;
+        }
+
+        if (! $this->isSameType($value, $comparedToValue)) {
+            return false;
+        }
+
+        return $this->getSize($attribute, $value) < $this->getSize($attribute, $comparedToValue);
+    }
+
+    /**
+     * Validate that an attribute is greater than or equal another attribute.
+     *
+     * @param  string  $attribute
+     * @param  mixed   $value
+     * @param  array   $parameters
+     * @return bool
+     */
+    public function validateGte($attribute, $value, $parameters)
+    {
+        $this->requireParameterCount(1, $parameters, 'gte');
+
+        $comparedToValue = $this->getValue($parameters[0]);
+
+        $this->shouldBeNumeric($attribute, 'Gte');
+
+        if (is_null($comparedToValue) && (is_numeric($value) && is_numeric($parameters[0]))) {
+            return $this->getSize($attribute, $value) >= $parameters[0];
+        }
+
+        if ($this->hasRule($attribute, $this->numericRules) && is_numeric($value) && is_numeric($comparedToValue)) {
+            return $value >= $comparedToValue;
+        }
+
+        if (! $this->isSameType($value, $comparedToValue)) {
+            return false;
+        }
+
+        return $this->getSize($attribute, $value) >= $this->getSize($attribute, $comparedToValue);
+    }
+
+    /**
+     * Validate that an attribute is less than or equal another attribute.
+     *
+     * @param  string  $attribute
+     * @param  mixed   $value
+     * @param  array   $parameters
+     * @return bool
+     */
+    public function validateLte($attribute, $value, $parameters)
+    {
+        $this->requireParameterCount(1, $parameters, 'lte');
+
+        $comparedToValue = $this->getValue($parameters[0]);
+
+        $this->shouldBeNumeric($attribute, 'Lte');
+
+        if (is_null($comparedToValue) && (is_numeric($value) && is_numeric($parameters[0]))) {
+            return $this->getSize($attribute, $value) <= $parameters[0];
+        }
+
+        if ($this->hasRule($attribute, $this->numericRules) && is_numeric($value) && is_numeric($comparedToValue)) {
+            return $value <= $comparedToValue;
+        }
+
+        if (! $this->isSameType($value, $comparedToValue)) {
+            return false;
+        }
+
+        return $this->getSize($attribute, $value) <= $this->getSize($attribute, $comparedToValue);
+    }
+
+    /**
      * Validate the MIME type of a file is an image MIME type.
      *
      * @param  string  $attribute
      * @param  mixed   $value
      * @return bool
      */
-    protected function validateImage($attribute, $value)
+    public function validateImage($attribute, $value)
     {
-        return $this->validateMimes($attribute, $value, ['jpeg', 'png', 'gif', 'bmp', 'svg']);
+        return $this->validateMimes($attribute, $value, ['jpeg', 'png', 'gif', 'bmp', 'svg', 'webp']);
     }
 
     /**
@@ -782,7 +1038,7 @@ trait ValidatesAttributes
      * @param  array   $parameters
      * @return bool
      */
-    protected function validateIn($attribute, $value, $parameters)
+    public function validateIn($attribute, $value, $parameters)
     {
         if (is_array($value) && $this->hasRule($attribute, 'Array')) {
             foreach ($value as $element) {
@@ -791,7 +1047,7 @@ trait ValidatesAttributes
                 }
             }
 
-            return count(array_diff($value, $parameters)) == 0;
+            return count(array_diff($value, $parameters)) === 0;
         }
 
         return ! is_array($value) && in_array((string) $value, $parameters);
@@ -805,7 +1061,7 @@ trait ValidatesAttributes
      * @param  array   $parameters
      * @return bool
      */
-    protected function validateInArray($attribute, $value, $parameters)
+    public function validateInArray($attribute, $value, $parameters)
     {
         $this->requireParameterCount(1, $parameters, 'in_array');
 
@@ -827,7 +1083,7 @@ trait ValidatesAttributes
      * @param  mixed   $value
      * @return bool
      */
-    protected function validateInteger($attribute, $value)
+    public function validateInteger($attribute, $value)
     {
         return filter_var($value, FILTER_VALIDATE_INT) !== false;
     }
@@ -839,7 +1095,7 @@ trait ValidatesAttributes
      * @param  mixed   $value
      * @return bool
      */
-    protected function validateIp($attribute, $value)
+    public function validateIp($attribute, $value)
     {
         return filter_var($value, FILTER_VALIDATE_IP) !== false;
     }
@@ -851,7 +1107,7 @@ trait ValidatesAttributes
      * @param  mixed   $value
      * @return bool
      */
-    protected function validateIpv4($attribute, $value)
+    public function validateIpv4($attribute, $value)
     {
         return filter_var($value, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false;
     }
@@ -863,7 +1119,7 @@ trait ValidatesAttributes
      * @param  mixed   $value
      * @return bool
      */
-    protected function validateIpv6($attribute, $value)
+    public function validateIpv6($attribute, $value)
     {
         return filter_var($value, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) !== false;
     }
@@ -875,7 +1131,7 @@ trait ValidatesAttributes
      * @param  mixed   $value
      * @return bool
      */
-    protected function validateJson($attribute, $value)
+    public function validateJson($attribute, $value)
     {
         if (! is_scalar($value) && ! method_exists($value, '__toString')) {
             return false;
@@ -894,7 +1150,7 @@ trait ValidatesAttributes
      * @param  array   $parameters
      * @return bool
      */
-    protected function validateMax($attribute, $value, $parameters)
+    public function validateMax($attribute, $value, $parameters)
     {
         $this->requireParameterCount(1, $parameters, 'max');
 
@@ -913,7 +1169,7 @@ trait ValidatesAttributes
      * @param  array   $parameters
      * @return bool
      */
-    protected function validateMimes($attribute, $value, $parameters)
+    public function validateMimes($attribute, $value, $parameters)
     {
         if (! $this->isValidFileInstance($value)) {
             return false;
@@ -923,7 +1179,7 @@ trait ValidatesAttributes
             return false;
         }
 
-        return $value->getPath() != '' && in_array($value->guessExtension(), $parameters);
+        return $value->getPath() !== '' && in_array($value->guessExtension(), $parameters);
     }
 
     /**
@@ -934,7 +1190,7 @@ trait ValidatesAttributes
      * @param  array  $parameters
      * @return bool
      */
-    protected function validateMimetypes($attribute, $value, $parameters)
+    public function validateMimetypes($attribute, $value, $parameters)
     {
         if (! $this->isValidFileInstance($value)) {
             return false;
@@ -944,7 +1200,7 @@ trait ValidatesAttributes
             return false;
         }
 
-        return $value->getPath() != '' &&
+        return $value->getPath() !== '' &&
                 (in_array($value->getMimeType(), $parameters) ||
                  in_array(explode('/', $value->getMimeType())[0].'/*', $parameters));
     }
@@ -962,9 +1218,13 @@ trait ValidatesAttributes
             return false;
         }
 
+        $phpExtensions = [
+            'php', 'php3', 'php4', 'php5', 'phtml',
+        ];
+
         return ($value instanceof UploadedFile)
-           ? strtolower($value->getClientOriginalExtension()) === 'php'
-           : strtolower($value->getExtension()) === 'php';
+           ? in_array(trim(strtolower($value->getClientOriginalExtension())), $phpExtensions)
+           : in_array(trim(strtolower($value->getExtension())), $phpExtensions);
     }
 
     /**
@@ -975,7 +1235,7 @@ trait ValidatesAttributes
      * @param  array   $parameters
      * @return bool
      */
-    protected function validateMin($attribute, $value, $parameters)
+    public function validateMin($attribute, $value, $parameters)
     {
         $this->requireParameterCount(1, $parameters, 'min');
 
@@ -989,7 +1249,7 @@ trait ValidatesAttributes
      *
      * @return bool
      */
-    protected function validateNullable()
+    public function validateNullable()
     {
         return true;
     }
@@ -1002,7 +1262,7 @@ trait ValidatesAttributes
      * @param  array   $parameters
      * @return bool
      */
-    protected function validateNotIn($attribute, $value, $parameters)
+    public function validateNotIn($attribute, $value, $parameters)
     {
         return ! $this->validateIn($attribute, $value, $parameters);
     }
@@ -1014,9 +1274,31 @@ trait ValidatesAttributes
      * @param  mixed   $value
      * @return bool
      */
-    protected function validateNumeric($attribute, $value)
+    public function validateNumeric($attribute, $value)
     {
         return is_numeric($value);
+    }
+
+    /**
+     * Validate that the current logged in user's password matches the given value.
+     *
+     * @param  string  $attribute
+     * @param  mixed  $value
+     * @param  array  $parameters
+     * @return bool
+     */
+    protected function validatePassword($attribute, $value, $parameters)
+    {
+        $auth = $this->container->make('auth');
+        $hasher = $this->container->make('hash');
+
+        $guard = $auth->guard(Arr::first($parameters));
+
+        if ($guard->guest()) {
+            return false;
+        }
+
+        return $hasher->check($value, $guard->user()->getAuthPassword());
     }
 
     /**
@@ -1026,7 +1308,7 @@ trait ValidatesAttributes
      * @param  mixed   $value
      * @return bool
      */
-    protected function validatePresent($attribute, $value)
+    public function validatePresent($attribute, $value)
     {
         return Arr::has($this->data, $attribute);
     }
@@ -1039,7 +1321,7 @@ trait ValidatesAttributes
      * @param  array   $parameters
      * @return bool
      */
-    protected function validateRegex($attribute, $value, $parameters)
+    public function validateRegex($attribute, $value, $parameters)
     {
         if (! is_string($value) && ! is_numeric($value)) {
             return false;
@@ -1051,13 +1333,32 @@ trait ValidatesAttributes
     }
 
     /**
+     * Validate that an attribute does not pass a regular expression check.
+     *
+     * @param  string  $attribute
+     * @param  mixed   $value
+     * @param  array   $parameters
+     * @return bool
+     */
+    public function validateNotRegex($attribute, $value, $parameters)
+    {
+        if (! is_string($value) && ! is_numeric($value)) {
+            return false;
+        }
+
+        $this->requireParameterCount(1, $parameters, 'not_regex');
+
+        return preg_match($parameters[0], $value) < 1;
+    }
+
+    /**
      * Validate that a required attribute exists.
      *
      * @param  string  $attribute
      * @param  mixed   $value
      * @return bool
      */
-    protected function validateRequired($attribute, $value)
+    public function validateRequired($attribute, $value)
     {
         if (is_null($value)) {
             return false;
@@ -1066,7 +1367,7 @@ trait ValidatesAttributes
         } elseif ((is_array($value) || $value instanceof Countable) && count($value) < 1) {
             return false;
         } elseif ($value instanceof File) {
-            return (string) $value->getPath() != '';
+            return (string) $value->getPath() !== '';
         }
 
         return true;
@@ -1080,7 +1381,7 @@ trait ValidatesAttributes
      * @param  mixed   $parameters
      * @return bool
      */
-    protected function validateRequiredIf($attribute, $value, $parameters)
+    public function validateRequiredIf($attribute, $value, $parameters)
     {
         $this->requireParameterCount(2, $parameters, 'required_if');
 
@@ -1126,7 +1427,7 @@ trait ValidatesAttributes
      * @param  mixed  $parameters
      * @return bool
      */
-    protected function validateRequiredUnless($attribute, $value, $parameters)
+    public function validateRequiredUnless($attribute, $value, $parameters)
     {
         $this->requireParameterCount(2, $parameters, 'required_unless');
 
@@ -1149,7 +1450,7 @@ trait ValidatesAttributes
      * @param  mixed   $parameters
      * @return bool
      */
-    protected function validateRequiredWith($attribute, $value, $parameters)
+    public function validateRequiredWith($attribute, $value, $parameters)
     {
         if (! $this->allFailingRequired($parameters)) {
             return $this->validateRequired($attribute, $value);
@@ -1166,7 +1467,7 @@ trait ValidatesAttributes
      * @param  mixed   $parameters
      * @return bool
      */
-    protected function validateRequiredWithAll($attribute, $value, $parameters)
+    public function validateRequiredWithAll($attribute, $value, $parameters)
     {
         if (! $this->anyFailingRequired($parameters)) {
             return $this->validateRequired($attribute, $value);
@@ -1183,7 +1484,7 @@ trait ValidatesAttributes
      * @param  mixed   $parameters
      * @return bool
      */
-    protected function validateRequiredWithout($attribute, $value, $parameters)
+    public function validateRequiredWithout($attribute, $value, $parameters)
     {
         if ($this->anyFailingRequired($parameters)) {
             return $this->validateRequired($attribute, $value);
@@ -1200,7 +1501,7 @@ trait ValidatesAttributes
      * @param  mixed   $parameters
      * @return bool
      */
-    protected function validateRequiredWithoutAll($attribute, $value, $parameters)
+    public function validateRequiredWithoutAll($attribute, $value, $parameters)
     {
         if ($this->allFailingRequired($parameters)) {
             return $this->validateRequired($attribute, $value);
@@ -1251,7 +1552,7 @@ trait ValidatesAttributes
      * @param  array   $parameters
      * @return bool
      */
-    protected function validateSame($attribute, $value, $parameters)
+    public function validateSame($attribute, $value, $parameters)
     {
         $this->requireParameterCount(1, $parameters, 'same');
 
@@ -1268,7 +1569,7 @@ trait ValidatesAttributes
      * @param  array   $parameters
      * @return bool
      */
-    protected function validateSize($attribute, $value, $parameters)
+    public function validateSize($attribute, $value, $parameters)
     {
         $this->requireParameterCount(1, $parameters, 'size');
 
@@ -1282,9 +1583,35 @@ trait ValidatesAttributes
      *
      * @return bool
      */
-    protected function validateSometimes()
+    public function validateSometimes()
     {
         return true;
+    }
+
+    /**
+     * Validate the attribute starts with a given substring.
+     *
+     * @param  string  $attribute
+     * @param  mixed   $value
+     * @param  array   $parameters
+     * @return bool
+     */
+    public function validateStartsWith($attribute, $value, $parameters)
+    {
+        return Str::startsWith($value, $parameters);
+    }
+
+    /**
+     * Validate the attribute ends with a given substring.
+     *
+     * @param  string  $attribute
+     * @param  mixed   $value
+     * @param  array   $parameters
+     * @return bool
+     */
+    public function validateEndsWith($attribute, $value, $parameters)
+    {
+        return Str::endsWith($value, $parameters);
     }
 
     /**
@@ -1294,7 +1621,7 @@ trait ValidatesAttributes
      * @param  mixed   $value
      * @return bool
      */
-    protected function validateString($attribute, $value)
+    public function validateString($attribute, $value)
     {
         return is_string($value);
     }
@@ -1306,7 +1633,7 @@ trait ValidatesAttributes
      * @param  mixed   $value
      * @return bool
      */
-    protected function validateTimezone($attribute, $value)
+    public function validateTimezone($attribute, $value)
     {
         try {
             new DateTimeZone($value);
@@ -1326,7 +1653,7 @@ trait ValidatesAttributes
      * @param  mixed   $value
      * @return bool
      */
-    protected function validateUrl($attribute, $value)
+    public function validateUrl($attribute, $value)
     {
         if (! is_string($value)) {
             return false;
@@ -1338,10 +1665,10 @@ trait ValidatesAttributes
          * (c) Fabien Potencier <fabien@symfony.com> http://symfony.com
          */
         $pattern = '~^
-            ((aaa|aaas|about|acap|acct|acr|adiumxtra|afp|afs|aim|apt|attachment|aw|barion|beshare|bitcoin|blob|bolo|callto|cap|chrome|chrome-extension|cid|coap|coaps|com-eventbrite-attendee|content|crid|cvs|data|dav|dict|dlna-playcontainer|dlna-playsingle|dns|dntp|dtn|dvb|ed2k|example|facetime|fax|feed|feedready|file|filesystem|finger|fish|ftp|geo|gg|git|gizmoproject|go|gopher|gtalk|h323|ham|hcp|http|https|iax|icap|icon|im|imap|info|iotdisco|ipn|ipp|ipps|irc|irc6|ircs|iris|iris.beep|iris.lwz|iris.xpc|iris.xpcs|itms|jabber|jar|jms|keyparc|lastfm|ldap|ldaps|magnet|mailserver|mailto|maps|market|message|mid|mms|modem|ms-help|ms-settings|ms-settings-airplanemode|ms-settings-bluetooth|ms-settings-camera|ms-settings-cellular|ms-settings-cloudstorage|ms-settings-emailandaccounts|ms-settings-language|ms-settings-location|ms-settings-lock|ms-settings-nfctransactions|ms-settings-notifications|ms-settings-power|ms-settings-privacy|ms-settings-proximity|ms-settings-screenrotation|ms-settings-wifi|ms-settings-workplace|msnim|msrp|msrps|mtqp|mumble|mupdate|mvn|news|nfs|ni|nih|nntp|notes|oid|opaquelocktoken|pack|palm|paparazzi|pkcs11|platform|pop|pres|prospero|proxy|psyc|query|redis|rediss|reload|res|resource|rmi|rsync|rtmfp|rtmp|rtsp|rtsps|rtspu|secondlife|service|session|sftp|sgn|shttp|sieve|sip|sips|skype|smb|sms|smtp|snews|snmp|soap.beep|soap.beeps|soldat|spotify|ssh|steam|stun|stuns|submit|svn|tag|teamspeak|tel|teliaeid|telnet|tftp|things|thismessage|tip|tn3270|turn|turns|tv|udp|unreal|urn|ut2004|vemmi|ventrilo|videotex|view-source|wais|webcal|ws|wss|wtai|wyciwyg|xcon|xcon-userid|xfire|xmlrpc\.beep|xmlrpc.beeps|xmpp|xri|ymsgr|z39\.50|z39\.50r|z39\.50s))://                                 # protocol
+            ((aaa|aaas|about|acap|acct|acd|acr|adiumxtra|adt|afp|afs|aim|amss|android|appdata|apt|ark|attachment|aw|barion|beshare|bitcoin|bitcoincash|blob|bolo|browserext|calculator|callto|cap|cast|casts|chrome|chrome-extension|cid|coap|coap\+tcp|coap\+ws|coaps|coaps\+tcp|coaps\+ws|com-eventbrite-attendee|content|conti|crid|cvs|dab|data|dav|diaspora|dict|did|dis|dlna-playcontainer|dlna-playsingle|dns|dntp|dpp|drm|drop|dtn|dvb|ed2k|elsi|example|facetime|fax|feed|feedready|file|filesystem|finger|first-run-pen-experience|fish|fm|ftp|fuchsia-pkg|geo|gg|git|gizmoproject|go|gopher|graph|gtalk|h323|ham|hcap|hcp|http|https|hxxp|hxxps|hydrazone|iax|icap|icon|im|imap|info|iotdisco|ipn|ipp|ipps|irc|irc6|ircs|iris|iris\.beep|iris\.lwz|iris\.xpc|iris\.xpcs|isostore|itms|jabber|jar|jms|keyparc|lastfm|ldap|ldaps|leaptofrogans|lorawan|lvlt|magnet|mailserver|mailto|maps|market|message|mid|mms|modem|mongodb|moz|ms-access|ms-browser-extension|ms-calculator|ms-drive-to|ms-enrollment|ms-excel|ms-eyecontrolspeech|ms-gamebarservices|ms-gamingoverlay|ms-getoffice|ms-help|ms-infopath|ms-inputapp|ms-lockscreencomponent-config|ms-media-stream-id|ms-mixedrealitycapture|ms-mobileplans|ms-officeapp|ms-people|ms-project|ms-powerpoint|ms-publisher|ms-restoretabcompanion|ms-screenclip|ms-screensketch|ms-search|ms-search-repair|ms-secondary-screen-controller|ms-secondary-screen-setup|ms-settings|ms-settings-airplanemode|ms-settings-bluetooth|ms-settings-camera|ms-settings-cellular|ms-settings-cloudstorage|ms-settings-connectabledevices|ms-settings-displays-topology|ms-settings-emailandaccounts|ms-settings-language|ms-settings-location|ms-settings-lock|ms-settings-nfctransactions|ms-settings-notifications|ms-settings-power|ms-settings-privacy|ms-settings-proximity|ms-settings-screenrotation|ms-settings-wifi|ms-settings-workplace|ms-spd|ms-sttoverlay|ms-transit-to|ms-useractivityset|ms-virtualtouchpad|ms-visio|ms-walk-to|ms-whiteboard|ms-whiteboard-cmd|ms-word|msnim|msrp|msrps|mss|mtqp|mumble|mupdate|mvn|news|nfs|ni|nih|nntp|notes|ocf|oid|onenote|onenote-cmd|opaquelocktoken|openpgp4fpr|pack|palm|paparazzi|payto|pkcs11|platform|pop|pres|prospero|proxy|pwid|psyc|pttp|qb|query|redis|rediss|reload|res|resource|rmi|rsync|rtmfp|rtmp|rtsp|rtsps|rtspu|s3|secondlife|service|session|sftp|sgn|shttp|sieve|simpleledger|sip|sips|skype|smb|sms|smtp|snews|snmp|soap\.beep|soap\.beeps|soldat|spiffe|spotify|ssh|steam|stun|stuns|submit|svn|tag|teamspeak|tel|teliaeid|telnet|tftp|things|thismessage|tip|tn3270|tool|turn|turns|tv|udp|unreal|urn|ut2004|v-event|vemmi|ventrilo|videotex|vnc|view-source|wais|webcal|wpid|ws|wss|wtai|wyciwyg|xcon|xcon-userid|xfire|xmlrpc\.beep|xmlrpc\.beeps|xmpp|xri|ymsgr|z39\.50|z39\.50r|z39\.50s))://                                 # protocol
             (([\pL\pN-]+:)?([\pL\pN-]+)@)?          # basic auth
             (
-                ([\pL\pN\pS-\.])+(\.?([\pL]|xn\-\-[\pL\pN-]+)+\.?) # a domain name
+                ([\pL\pN\pS\-\_\.])+(\.?([\pL]|xn\-\-[\pL\pN-]+)+\.?) # a domain name
                     |                                              # or
                 \d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}                 # an IP address
                     |                                              # or
@@ -1354,6 +1681,22 @@ trait ValidatesAttributes
         $~ixu';
 
         return preg_match($pattern, $value) > 0;
+    }
+
+    /**
+     * Validate that an attribute is a valid UUID.
+     *
+     * @param  string  $attribute
+     * @param  mixed  $value
+     * @return bool
+     */
+    public function validateUuid($attribute, $value)
+    {
+        if (! is_string($value)) {
+            return false;
+        }
+
+        return preg_match('/^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/iD', $value) > 0;
     }
 
     /**
@@ -1404,6 +1747,8 @@ trait ValidatesAttributes
      * @param  mixed  $second
      * @param  string  $operator
      * @return bool
+     *
+     * @throws \InvalidArgumentException
      */
     protected function compare($first, $second, $operator)
     {
@@ -1416,6 +1761,8 @@ trait ValidatesAttributes
                 return $first <= $second;
             case '>=':
                 return $first >= $second;
+            case '=':
+                return $first == $second;
             default:
                 throw new InvalidArgumentException;
         }
@@ -1430,7 +1777,7 @@ trait ValidatesAttributes
     protected function parseNamedParameters($parameters)
     {
         return array_reduce($parameters, function ($result, $item) {
-            list($key, $value) = array_pad(explode('=', $item, 2), 2, null);
+            [$key, $value] = array_pad(explode('=', $item, 2), 2, null);
 
             $result[$key] = $value;
 
@@ -1448,10 +1795,37 @@ trait ValidatesAttributes
      *
      * @throws \InvalidArgumentException
      */
-    protected function requireParameterCount($count, $parameters, $rule)
+    public function requireParameterCount($count, $parameters, $rule)
     {
         if (count($parameters) < $count) {
             throw new InvalidArgumentException("Validation rule $rule requires at least $count parameters.");
+        }
+    }
+
+    /**
+     * Check if the parameters are of the same type.
+     *
+     * @param  mixed  $first
+     * @param  mixed  $second
+     * @return bool
+     */
+    protected function isSameType($first, $second)
+    {
+        return gettype($first) == gettype($second);
+    }
+
+    /**
+     * Adds the existing rule to the numericRules array if the attribute's value is numeric.
+     *
+     * @param  string  $attribute
+     * @param  string  $rule
+     *
+     * @return void
+     */
+    protected function shouldBeNumeric($attribute, $rule)
+    {
+        if (is_numeric($this->getValue($attribute))) {
+            $this->numericRules[] = $rule;
         }
     }
 }

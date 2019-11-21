@@ -1,3 +1,7 @@
+<?php
+use Illuminate\Support\Str;
+use Illuminate\Support\Arr;
+?>
 @extends('layouts.app')
 
 @section('content')
@@ -13,7 +17,7 @@
                             <div class="col-md-12 text-left">
                                 <strong>{{ $post->title }}</strong>
                                 <div class="padding10">
-                                    {!! str_limit($post->content, $limit = 500, $end = '...') !!}
+                                    {!! Str::limit($post->content, $limit = 500, $end = '...') !!}
                                 </div>
                             </div>
                         </div>

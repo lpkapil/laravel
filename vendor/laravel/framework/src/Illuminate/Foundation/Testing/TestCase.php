@@ -2,11 +2,16 @@
 
 namespace Illuminate\Foundation\Testing;
 
-use Mockery;
-use Illuminate\Support\Facades\Facade;
-use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Console\Application as Artisan;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Facade;
+use Illuminate\Support\Str;
+use Mockery;
+use Mockery\Exception\InvalidCountException;
 use PHPUnit\Framework\TestCase as BaseTestCase;
+use Throwable;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -15,13 +20,14 @@ abstract class TestCase extends BaseTestCase
         Concerns\InteractsWithAuthentication,
         Concerns\InteractsWithConsole,
         Concerns\InteractsWithDatabase,
+        Concerns\InteractsWithExceptionHandling,
         Concerns\InteractsWithSession,
         Concerns\MocksApplicationServices;
 
     /**
      * The Illuminate application instance.
      *
-     * @var \Illuminate\Foundation\Application
+     * @var \Illuminate\Contracts\Foundation\Application
      */
     protected $app;
 
@@ -38,6 +44,13 @@ abstract class TestCase extends BaseTestCase
      * @var array
      */
     protected $beforeApplicationDestroyedCallbacks = [];
+
+    /**
+     * The exception thrown while running an application destruction callback.
+     *
+     * @var \Throwable
+     */
+    protected $callbackException;
 
     /**
      * Indicates if we have made it through the base setUp function.
@@ -60,7 +73,7 @@ abstract class TestCase extends BaseTestCase
      *
      * @return void
      */
-    protected function setUp()
+    protected function setUp(): void
     {
         if (! $this->app) {
             $this->refreshApplication();
@@ -69,7 +82,7 @@ abstract class TestCase extends BaseTestCase
         $this->setUpTraits();
 
         foreach ($this->afterApplicationCreatedCallbacks as $callback) {
-            call_user_func($callback);
+            $callback();
         }
 
         Facade::clearResolvedInstances();
@@ -98,6 +111,10 @@ abstract class TestCase extends BaseTestCase
     {
         $uses = array_flip(class_uses_recursive(static::class));
 
+        if (isset($uses[RefreshDatabase::class])) {
+            $this->refreshDatabase();
+        }
+
         if (isset($uses[DatabaseMigrations::class])) {
             $this->runDatabaseMigrations();
         }
@@ -114,6 +131,10 @@ abstract class TestCase extends BaseTestCase
             $this->disableEventsForAllTests();
         }
 
+        if (isset($uses[WithFaker::class])) {
+            $this->setUpFaker();
+        }
+
         return $uses;
     }
 
@@ -122,12 +143,10 @@ abstract class TestCase extends BaseTestCase
      *
      * @return void
      */
-    protected function tearDown()
+    protected function tearDown(): void
     {
         if ($this->app) {
-            foreach ($this->beforeApplicationDestroyedCallbacks as $callback) {
-                call_user_func($callback);
-            }
+            $this->callBeforeApplicationDestroyedCallbacks();
 
             $this->app->flush();
 
@@ -140,14 +159,40 @@ abstract class TestCase extends BaseTestCase
             $this->serverVariables = [];
         }
 
+        if (property_exists($this, 'defaultHeaders')) {
+            $this->defaultHeaders = [];
+        }
+
         if (class_exists('Mockery')) {
-            Mockery::close();
+            if ($container = Mockery::getContainer()) {
+                $this->addToAssertionCount($container->mockery_getExpectationCount());
+            }
+
+            try {
+                Mockery::close();
+            } catch (InvalidCountException $e) {
+                if (! Str::contains($e->getMethodName(), ['doWrite', 'askQuestion'])) {
+                    throw $e;
+                }
+            }
+        }
+
+        if (class_exists(Carbon::class)) {
+            Carbon::setTestNow();
+        }
+
+        if (class_exists(CarbonImmutable::class)) {
+            CarbonImmutable::setTestNow();
         }
 
         $this->afterApplicationCreatedCallbacks = [];
         $this->beforeApplicationDestroyedCallbacks = [];
 
         Artisan::forgetBootstrappers();
+
+        if ($this->callbackException) {
+            throw $this->callbackException;
+        }
     }
 
     /**
@@ -161,7 +206,7 @@ abstract class TestCase extends BaseTestCase
         $this->afterApplicationCreatedCallbacks[] = $callback;
 
         if ($this->setUpHasRun) {
-            call_user_func($callback);
+            $callback();
         }
     }
 
@@ -174,5 +219,23 @@ abstract class TestCase extends BaseTestCase
     protected function beforeApplicationDestroyed(callable $callback)
     {
         $this->beforeApplicationDestroyedCallbacks[] = $callback;
+    }
+
+    /**
+     * Execute the application's pre-destruction callbacks.
+     *
+     * @return void
+     */
+    protected function callBeforeApplicationDestroyedCallbacks()
+    {
+        foreach ($this->beforeApplicationDestroyedCallbacks as $callback) {
+            try {
+                $callback();
+            } catch (Throwable $e) {
+                if (! $this->callbackException) {
+                    $this->callbackException = $e;
+                }
+            }
+        }
     }
 }
