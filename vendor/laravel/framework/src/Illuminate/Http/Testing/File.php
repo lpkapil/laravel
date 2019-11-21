@@ -41,7 +41,7 @@ class File extends UploadedFile
 
         parent::__construct(
             $this->tempFilePath(), $name, $this->getMimeType(),
-            filesize($this->tempFilePath()), $error = null, $test = true
+            null, true
         );
     }
 
@@ -49,12 +49,24 @@ class File extends UploadedFile
      * Create a new fake file.
      *
      * @param  string  $name
-     * @param  int  $kilobytes
+     * @param  string|int  $kilobytes
      * @return \Illuminate\Http\Testing\File
      */
     public static function create($name, $kilobytes = 0)
     {
         return (new FileFactory)->create($name, $kilobytes);
+    }
+
+    /**
+     * Create a new fake file with content.
+     *
+     * @param  string  $name
+     * @param  string  $content
+     * @return \Illuminate\Http\Testing\File
+     */
+    public static function createWithContent($name, $content)
+    {
+        return (new FileFactory)->createWithContent($name, $content);
     }
 
     /**

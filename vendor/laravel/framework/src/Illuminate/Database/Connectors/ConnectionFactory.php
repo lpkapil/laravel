@@ -2,16 +2,15 @@
 
 namespace Illuminate\Database\Connectors;
 
-use PDOException;
-use Illuminate\Support\Arr;
-use InvalidArgumentException;
+use Illuminate\Contracts\Container\Container;
 use Illuminate\Database\Connection;
 use Illuminate\Database\MySqlConnection;
-use Illuminate\Database\SQLiteConnection;
 use Illuminate\Database\PostgresConnection;
+use Illuminate\Database\SQLiteConnection;
 use Illuminate\Database\SqlServerConnection;
-use Illuminate\Contracts\Container\Container;
-use Illuminate\Contracts\Debug\ExceptionHandler;
+use Illuminate\Support\Arr;
+use InvalidArgumentException;
+use PDOException;
 
 class ConnectionFactory
 {
@@ -37,7 +36,7 @@ class ConnectionFactory
      * Establish a PDO connection based on the configuration.
      *
      * @param  array   $config
-     * @param  string  $name
+     * @param  string|null  $name
      * @return \Illuminate\Database\Connection
      */
     public function make(array $config, $name = null)
@@ -182,9 +181,7 @@ class ConnectionFactory
                 try {
                     return $this->createConnector($config)->connect($config);
                 } catch (PDOException $e) {
-                    if (count($hosts) - 1 === $key && $this->container->bound(ExceptionHandler::class)) {
-                        $this->container->make(ExceptionHandler::class)->report($e);
-                    }
+                    continue;
                 }
             }
 
@@ -200,7 +197,7 @@ class ConnectionFactory
      */
     protected function parseHosts(array $config)
     {
-        $hosts = array_wrap($config['host']);
+        $hosts = Arr::wrap($config['host']);
 
         if (empty($hosts)) {
             throw new InvalidArgumentException('Database hosts array is empty.');
@@ -283,6 +280,6 @@ class ConnectionFactory
                 return new SqlServerConnection($connection, $database, $prefix, $config);
         }
 
-        throw new InvalidArgumentException("Unsupported driver [$driver]");
+        throw new InvalidArgumentException("Unsupported driver [{$driver}]");
     }
 }

@@ -1,12 +1,12 @@
 <p align="center"><img src="https://laravel.com/assets/img/components/logo-laravel.svg"></p>
 
 <p align="center">
-Version: 5.4.33
+Versions: 6.2
 </p>
 
 ## About Application
 
-This is Simple Blog application with Administrator and Subscriber role users and dashboard, Developed using Laravel v5.4.33. 
+This is Simple Blog application with Administrator and Subscriber role users and dashboard, Developed using Laravel v6.2. 
 
 - Login/Registration Module
 - Posts Management Module

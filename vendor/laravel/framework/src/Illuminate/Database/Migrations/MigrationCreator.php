@@ -3,9 +3,9 @@
 namespace Illuminate\Database\Migrations;
 
 use Closure;
+use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
-use Illuminate\Filesystem\Filesystem;
 
 class MigrationCreator
 {
@@ -39,14 +39,15 @@ class MigrationCreator
      *
      * @param  string  $name
      * @param  string  $path
-     * @param  string  $table
+     * @param  string|null  $table
      * @param  bool    $create
      * @return string
+     *
      * @throws \Exception
      */
     public function create($name, $path, $table = null, $create = false)
     {
-        $this->ensureMigrationDoesntAlreadyExist($name);
+        $this->ensureMigrationDoesntAlreadyExist($name, $path);
 
         // First we will get the stub file for the migration, which serves as a type
         // of template for the migration. Once we have those we will populate the
@@ -61,7 +62,7 @@ class MigrationCreator
         // Next, we will fire any hooks that are supposed to fire after a migration is
         // created. Once that is done we'll be ready to return the full path to the
         // migration file so it can be used however it's needed by the developer.
-        $this->firePostCreateHooks();
+        $this->firePostCreateHooks($table);
 
         return $path;
     }
@@ -70,21 +71,30 @@ class MigrationCreator
      * Ensure that a migration with the given name doesn't already exist.
      *
      * @param  string  $name
+     * @param  string  $migrationPath
      * @return void
      *
      * @throws \InvalidArgumentException
      */
-    protected function ensureMigrationDoesntAlreadyExist($name)
+    protected function ensureMigrationDoesntAlreadyExist($name, $migrationPath = null)
     {
+        if (! empty($migrationPath)) {
+            $migrationFiles = $this->files->glob($migrationPath.'/*.php');
+
+            foreach ($migrationFiles as $migrationFile) {
+                $this->files->requireOnce($migrationFile);
+            }
+        }
+
         if (class_exists($className = $this->getClassName($name))) {
-            throw new InvalidArgumentException("A {$className} migration already exists.");
+            throw new InvalidArgumentException("A {$className} class already exists.");
         }
     }
 
     /**
      * Get the migration stub file.
      *
-     * @param  string  $table
+     * @param  string|null  $table
      * @param  bool    $create
      * @return string
      */
@@ -97,11 +107,9 @@ class MigrationCreator
         // We also have stubs for creating new tables and modifying existing tables
         // to save the developer some typing when they are creating a new tables
         // or modifying existing tables. We'll grab the appropriate stub here.
-        else {
-            $stub = $create ? 'create.stub' : 'update.stub';
+        $stub = $create ? 'create.stub' : 'update.stub';
 
-            return $this->files->get($this->stubPath()."/{$stub}");
-        }
+        return $this->files->get($this->stubPath()."/{$stub}");
     }
 
     /**
@@ -109,7 +117,7 @@ class MigrationCreator
      *
      * @param  string  $name
      * @param  string  $stub
-     * @param  string  $table
+     * @param  string|null  $table
      * @return string
      */
     protected function populateStub($name, $stub, $table)
@@ -152,12 +160,13 @@ class MigrationCreator
     /**
      * Fire the registered post create hooks.
      *
+     * @param  string|null  $table
      * @return void
      */
-    protected function firePostCreateHooks()
+    protected function firePostCreateHooks($table)
     {
         foreach ($this->postCreate as $callback) {
-            call_user_func($callback);
+            $callback($table);
         }
     }
 

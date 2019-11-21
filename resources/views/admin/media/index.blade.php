@@ -1,3 +1,6 @@
+<?php
+use Illuminate\Support\Arr;
+?>
 @extends('layouts.app')
 
 @section('content')
@@ -27,8 +30,8 @@
                             @foreach($mediaitems as $medium)
                             <tr>
                                 <td>{{ $medium->name}}</td>
-                                <td>{{ $medium->size}}</td>
                                 <td>{{ $medium->type}}</td>
+                                <td>{{ $medium->size}}</td>
                                 <td>{{ $medium->user->name}}</td>
                                 <td>{{ \Carbon\Carbon::parse($medium->updated_at)->format('j M Y, h:i:s A') }}</td>
                                 <td>

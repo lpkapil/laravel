@@ -2,9 +2,10 @@
 
 namespace Illuminate\Database;
 
-use InvalidArgumentException;
 use Illuminate\Console\Command;
 use Illuminate\Container\Container;
+use Illuminate\Support\Arr;
+use InvalidArgumentException;
 
 abstract class Seeder
 {
@@ -25,27 +26,46 @@ abstract class Seeder
     /**
      * Seed the given connection from the given path.
      *
-     * @param  string  $class
-     * @return void
+     * @param  array|string  $class
+     * @param  bool  $silent
+     * @return $this
      */
-    public function call($class)
+    public function call($class, $silent = false)
     {
-        if (isset($this->command)) {
-            $this->command->getOutput()->writeln("<info>Seeding:</info> $class");
+        $classes = Arr::wrap($class);
+
+        foreach ($classes as $class) {
+            $seeder = $this->resolve($class);
+
+            $name = get_class($seeder);
+
+            if ($silent === false && isset($this->command)) {
+                $this->command->getOutput()->writeln("<comment>Seeding:</comment> {$name}");
+            }
+
+            $startTime = microtime(true);
+
+            $seeder->__invoke();
+
+            $runTime = round(microtime(true) - $startTime, 2);
+
+            if ($silent === false && isset($this->command)) {
+                $this->command->getOutput()->writeln("<info>Seeded:</info>  {$name} ({$runTime} seconds)");
+            }
         }
 
-        $this->resolve($class)->__invoke();
+        return $this;
     }
 
     /**
      * Silently seed the given connection from the given path.
      *
-     * @param  string  $class
+     * @param  array|string  $class
      * @return void
      */
     public function callSilent($class)
     {
-        $this->resolve($class)->__invoke();
+        $this->call($class, true);
     }
 
     /**
@@ -100,7 +120,7 @@ abstract class Seeder
     /**
      * Run the database seeds.
      *
-     * @return void
+     * @return mixed
      *
      * @throws \InvalidArgumentException
      */
